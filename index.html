@@ -10,15 +10,10 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="MutfakPro">
 <link rel="manifest" id="pwa-manifest-link">
-<script type="module">
+<script>
 // ================================================================
-// FIREBASE AYARLARI — Buraya kendi bilgilerinizi yazın
+// FIREBASE AYARLARI
 // ================================================================
-import { initializeApp }                    from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getDatabase, ref, onValue, set }   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
-import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged }
-                                             from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-
 const firebaseConfig = {
   apiKey:            "AIzaSyCJ_MKGnOAl1b_e14USJHBrBrKBchZDN-k",
   authDomain:        "mutfakpro-b5982.firebaseapp.com",
@@ -30,39 +25,51 @@ const firebaseConfig = {
 };
 // ================================================================
 
-const app      = initializeApp(firebaseConfig);
-const database = getDatabase(app);
-const auth     = getAuth(app);
-const dbRef    = ref(database, 'mutfakpro/data');
+// Firebase'i dinamik import ile yükle (module scope sorununu çözer)
+Promise.all([
+  import("https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js"),
+  import("https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js"),
+  import("https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js")
+]).then(([appModule, dbModule, authModule]) => {
+  const { initializeApp } = appModule;
+  const { getDatabase, ref, onValue, set } = dbModule;
+  const { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } = authModule;
 
-// ── Giriş ──────────────────────────────────────────────────────
-window.firebaseGiris = function(email, sifre) {
-  return signInWithEmailAndPassword(auth, email, sifre);
-};
+  const app      = initializeApp(firebaseConfig);
+  const database = getDatabase(app);
+  const auth     = getAuth(app);
+  const dbRef    = ref(database, 'mutfakpro/data');
 
-// ── Çıkış ──────────────────────────────────────────────────────
-window.firebaseCikis = function() {
-  return signOut(auth);
-};
+  window.firebaseGiris = function(email, sifre) {
+    return signInWithEmailAndPassword(auth, email, sifre);
+  };
 
-// ── Kaydet ─────────────────────────────────────────────────────
-window.firebaseKaydet = function(data) {
-  if (!auth.currentUser) return;
-  set(dbRef, data).catch(err => console.error('Kayıt hatası:', err));
-};
+  window.firebaseCikis = function() {
+    return signOut(auth);
+  };
 
-// ── Anlık dinle ────────────────────────────────────────────────
-window.firebaseDinle = function(callback) {
-  onValue(dbRef, (snapshot) => {
-    if (snapshot.exists()) callback(snapshot.val());
+  window.firebaseKaydet = function(data) {
+    if (!auth.currentUser) return;
+    set(dbRef, data).catch(err => console.error('Kayıt hatası:', err));
+  };
+
+  window.firebaseDinle = function(callback) {
+    onValue(dbRef, (snapshot) => {
+      if (snapshot.exists()) callback(snapshot.val());
+    });
+  };
+
+  onAuthStateChanged(auth, (user) => {
+    window.firebaseHazir = true;
+    window.firebaseKullanici = user;
+    document.dispatchEvent(new CustomEvent('firebase-ready', { detail: { user } }));
   });
-};
 
-// ── Auth durumu değişince ──────────────────────────────────────
-onAuthStateChanged(auth, (user) => {
-  window.firebaseHazir = true;
-  window.firebaseKullanici = user;
-  document.dispatchEvent(new CustomEvent('firebase-ready', { detail: { user } }));
+}).catch(err => {
+  console.error('Firebase yüklenemedi:', err);
+  // Firebase olmadan da çalışsın (sadece local)
+  window.firebaseHazir = false;
+  document.dispatchEvent(new CustomEvent('firebase-ready', { detail: { user: null } }));
 });
 </script>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.31.0/dist/tabler-icons.min.css">
@@ -103,9 +110,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 
 /* BOTTOM NAV */
 .nav{display:flex;border-top:1px solid var(--border);background:var(--surface);position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;z-index:100}
-.nav-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px 4px;cursor:pointer;font-size:10px;color:var(--text2);gap:2px;border:none;background:none;transition:color 0.15s}
+.nav-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:6px 2px;cursor:pointer;font-size:9px;color:var(--text2);gap:1px;border:none;background:none;transition:color 0.15s}
 .nav-item.active{color:var(--accent)}
-.nav-item i{font-size:22px}
+.nav-item i{font-size:20px}
 
 /* CARDS & LAYOUT */
 .section-title{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:0.07em;margin:14px 0 8px}
@@ -293,7 +300,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .ver-har-note{color:var(--text2);margin-top:2px;font-size:11px}
 
 /* ===== GİRİŞ EKRANI ===== */
-#login-screen{position:fixed;inset:0;z-index:9999;background:var(--accent-dark);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px}
+#login-screen{position:fixed;inset:0;z-index:9999;background:var(--accent-dark);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;transition:opacity 0.2s}
 .login-logo{width:72px;height:72px;background:rgba(255,255,255,0.15);border-radius:20px;display:flex;align-items:center;justify-content:center;margin-bottom:16px}
 .login-logo i{font-size:40px;color:white}
 .login-title{font-size:24px;font-weight:700;color:white;margin-bottom:4px}
@@ -958,6 +965,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <button class="btn warning" style="flex:1" onclick="verBorcEkle()"><i class="ti ti-plus"></i> Borç Ekle</button>
       <button class="btn danger" style="flex:1" onclick="verSil()"><i class="ti ti-trash"></i> Sil</button>
     </div>
+    <button class="btn btn-full" onclick="closeModal('modal-ver-detay')"><i class="ti ti-arrow-left"></i> Geri Dön</button>
 
     <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:8px">Hareket Geçmişi</div>
     <div id="vrd-hareketler" style="max-height:200px;overflow-y:auto"></div>
@@ -1046,6 +1054,12 @@ function kaydet() {
 function yukle() {
   const d = localStorage.getItem('mutfakpro');
   if (d) { try { db = JSON.parse(d); } catch(e) {} }
+  // Eksik alanları her zaman garantile
+  if (!db.urunler)    db.urunler    = [];
+  if (!db.cariler)    db.cariler    = [];
+  if (!db.hareketler) db.hareketler = [];
+  if (!db.veresiyeler) db.veresiyeler = [];
+  if (!db.ayarlar)    db.ayarlar    = { kritikEsik: 3, paraBirimi: '₺' };
 }
 
 
@@ -1065,11 +1079,14 @@ function showSyncToast() {
 
 // ===== NAV =====
 function goPage(id) {
+  if (typeof camStream !== 'undefined' && camStream && id !== 'qr') kameraKapat();
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  document.getElementById('page-' + id).classList.add('active');
+  const pg = document.getElementById('page-' + id);
+  if (pg) pg.classList.add('active');
   if (id === 'home') refreshHome();
   if (id === 'stok') { renderKategoriChipler(); renderStok(); }
   if (id === 'muhasebe') renderMuhasebe();
+  if (id === 'veresiye') renderVeresiye();
 }
 function setNav(idx) {
   document.querySelectorAll('.nav-item').forEach((n,i) => n.classList.toggle('active', i === idx));
@@ -1143,9 +1160,10 @@ function refreshHome() {
 function renderKategoriChipler() {
   const kategoriler = [...new Set(db.urunler.map(u => u.kategori).filter(Boolean))];
   const el = document.getElementById('kategori-chipler');
-  el.innerHTML = `<button class="chip${aktifKategori==='Tümü'?' active':''}" onclick="filterKategori('Tümü',this)">Tümü</button>` +
-    kategoriler.map(k => `<button class="chip${aktifKategori===k?' active':''}" onclick="filterKategori('${k}',this)">${k}</button>`).join('');
-  // datalist güncelle
+  if (el) {
+    el.innerHTML = `<button class="chip${aktifKategori==='Tümü'?' active':''}" onclick="filterKategori('Tümü',this)">Tümü</button>` +
+      kategoriler.map(k => `<button class="chip${aktifKategori===k?' active':''}" onclick="filterKategori('${k}',this)">${k}</button>`).join('');
+  }
   const dl = document.getElementById('kategori-list');
   if (dl) dl.innerHTML = kategoriler.map(k => `<option value="${k}">`).join('');
 }
@@ -1156,6 +1174,7 @@ function filterKategori(k, el) {
   renderStok();
 }
 function renderStok() {
+  if (!document.getElementById('stok-liste')) return;
   const q = (document.getElementById('stok-search')?.value || '').toLowerCase();
   const kritikEsik = db.ayarlar.kritikEsik || 3;
   let liste = db.urunler.filter(u => {
@@ -1208,25 +1227,33 @@ function urunDetayAc(idx) {
 
 // ===== ÜRÜN EKLE/DÜZENLE =====
 function openUrunModal(idx) {
-  duzenlenenUrunIdx = idx !== undefined ? idx : -1;
-  const isEdit = duzenlenenUrunIdx >= 0;
-  document.getElementById('urun-modal-title').textContent = isEdit ? 'Ürün Düzenle' : 'Yeni Ürün Ekle';
-  if (isEdit) {
-    const u = db.urunler[idx];
-    document.getElementById('u-ad').value = u.ad || '';
-    document.getElementById('u-sku').value = u.sku || '';
-    document.getElementById('u-kategori').value = u.kategori || '';
-    document.getElementById('u-alis').value = u.alisFiyati || '';
-    document.getElementById('u-satis').value = u.satisFiyati || '';
-    document.getElementById('u-stok').value = u.stok || 0;
-    document.getElementById('u-marka').value = u.marka || '';
-    document.getElementById('u-aciklama').value = u.aciklama || '';
-  } else {
-    ['u-ad','u-sku','u-kategori','u-alis','u-satis','u-marka','u-aciklama'].forEach(id => document.getElementById(id).value = '');
-    document.getElementById('u-stok').value = 0;
+  try {
+    duzenlenenUrunIdx = idx !== undefined ? idx : -1;
+    const isEdit = duzenlenenUrunIdx >= 0;
+    document.getElementById('urun-modal-title').textContent = isEdit ? 'Ürün Düzenle' : 'Yeni Ürün Ekle';
+    if (isEdit) {
+      const u = db.urunler[idx];
+      document.getElementById('u-ad').value = u.ad || '';
+      document.getElementById('u-sku').value = u.sku || '';
+      document.getElementById('u-kategori').value = u.kategori || '';
+      document.getElementById('u-alis').value = u.alisFiyati || '';
+      document.getElementById('u-satis').value = u.satisFiyati || '';
+      document.getElementById('u-stok').value = u.stok || 0;
+      document.getElementById('u-marka').value = u.marka || '';
+      document.getElementById('u-aciklama').value = u.aciklama || '';
+    } else {
+      ['u-ad','u-sku','u-kategori','u-alis','u-satis','u-marka','u-aciklama'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = '';
+      });
+      const stokEl = document.getElementById('u-stok');
+      if (stokEl) stokEl.value = 0;
+    }
+    renderKategoriChipler();
+    openModal('modal-urun');
+  } catch(e) {
+    alert('Ürün modal hatası: ' + e.message);
   }
-  renderKategoriChipler();
-  openModal('modal-urun');
 }
 function kaydetUrun() {
   const ad = document.getElementById('u-ad').value.trim();
@@ -1257,11 +1284,14 @@ function kaydetUrun() {
   renderKategoriChipler();
   renderStok();
   refreshHome();
+  alert('✓ ' + urun.ad + ' eklendi!');
 }
 
 // ===== SATIŞ =====
 function openSatisModal() {
+  try {
   const sel = document.getElementById('s-urun');
+  if (!sel) { alert('Satış modal hatası: s-urun elementi bulunamadı'); return; }
   sel.innerHTML = '<option value="">— Ürün seçin —</option>' +
     db.urunler.map((u,i) => `<option value="${i}">${u.ad} (Stok: ${u.stok})</option>`).join('');
   const cs = document.getElementById('s-cari');
@@ -1270,6 +1300,7 @@ function openSatisModal() {
   document.getElementById('s-bilgi').style.display = 'none';
   document.getElementById('s-toplam').textContent = pb() + '0';
   openModal('modal-satis');
+  } catch(e) { alert("Satış modal hatası: " + e.message); }
 }
 function satisUrunSecildi() {
   const idx = document.getElementById('s-urun').value;
@@ -1444,6 +1475,7 @@ function renderCariListe() {
 
 // ===== MUHASEBE =====
 function renderMuhasebe() {
+  if (!document.getElementById('muh-genel')) return;
   document.getElementById('muh-genel').style.display = muhFilter==='genel'?'block':'none';
   document.getElementById('muh-cari').style.display = muhFilter==='cari'?'block':'none';
   document.getElementById('muh-hareketler').style.display = muhFilter==='hareketler'?'block':'none';
@@ -1603,6 +1635,7 @@ function verRenkAl(ad) {
 }
 
 function renderVeresiye() {
+  if (!document.getElementById('ver-liste')) return;
   if (!db.veresiyeler) db.veresiyeler = [];
   const q = (document.getElementById('ver-search')?.value || '').toLowerCase();
   let liste = db.veresiyeler.filter(v => !q || v.ad.toLowerCase().includes(q) || (v.tel||'').includes(q));
@@ -1743,18 +1776,7 @@ function verSil() {
   renderVeresiye();
 }
 
-// goPage extension for veresiye
-const _origGoPage = window.goPage || goPage;
-window.goPage = function(id) {
-  if (id !== 'qr' && typeof camStream !== 'undefined' && camStream) kameraKapat();
-  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  const pg = document.getElementById('page-' + id);
-  if (pg) pg.classList.add('active');
-  if (id === 'home') refreshHome();
-  if (id === 'stok') { renderKategoriChipler(); renderStok(); }
-  if (id === 'muhasebe') renderMuhasebe();
-  if (id === 'veresiye') renderVeresiye();
-};
+// goPage extension handled in original function
 
 // ===== PWA MANIFEST =====
 (function(){
@@ -1829,40 +1851,44 @@ function loginGiris() {
   const email = (document.getElementById('login-user').value || '').trim();
   const sifre = document.getElementById('login-pass').value || '';
 
-  if (!email || !sifre) {
-    gosterLoginHata('E-posta ve şifre zorunlu.');
-    return;
-  }
+  if (!email || !sifre) { gosterLoginHata('E-posta ve şifre zorunlu.'); return; }
 
-  // Giriş butonunu devre dışı bırak
   const btn = document.querySelector('.login-btn');
-  btn.textContent = 'Giriş yapılıyor...';
+  btn.textContent = 'Bağlanıyor...';
   btn.disabled = true;
 
-  if (window.firebaseGiris) {
-    // Firebase Auth ile giriş
-    window.firebaseGiris(email, sifre)
-      .then(userCred => {
-        girisliKullanici = { ad: userCred.user.email, email: userCred.user.email, rol: 'yonetici' };
-        girisBasarili();
-      })
-      .catch(err => {
-        btn.textContent = 'Giriş Yap';
-        btn.disabled = false;
-        if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
-          gosterLoginHata('E-posta veya şifre hatalı.');
-        } else if (err.code === 'auth/invalid-email') {
-          gosterLoginHata('Geçersiz e-posta adresi.');
-        } else if (err.code === 'auth/too-many-requests') {
-          gosterLoginHata('Çok fazla hatalı giriş. Lütfen bekleyin.');
-        } else {
-          gosterLoginHata('Bağlantı hatası. İnternet bağlantınızı kontrol edin.');
-        }
-      });
-  } else {
-    // Firebase henüz yüklenmedi, bekle
-    setTimeout(() => { btn.textContent = 'Giriş Yap'; btn.disabled = false; loginGiris(); }, 1500);
+  function deneGiris(deneme) {
+    if (window.firebaseGiris) {
+      window.firebaseGiris(email, sifre)
+        .then(userCred => {
+          girisliKullanici = { ad: userCred.user.email, email: userCred.user.email, rol: 'yonetici' };
+          girisBasarili();
+        })
+        .catch(err => {
+          btn.textContent = 'Giriş Yap';
+          btn.disabled = false;
+          if (['auth/user-not-found','auth/wrong-password','auth/invalid-credential'].includes(err.code)) {
+            gosterLoginHata('E-posta veya şifre hatalı.');
+          } else if (err.code === 'auth/invalid-email') {
+            gosterLoginHata('Geçersiz e-posta adresi.');
+          } else if (err.code === 'auth/too-many-requests') {
+            gosterLoginHata('Çok fazla hatalı giriş. Lütfen bekleyin.');
+          } else {
+            gosterLoginHata('Bağlantı hatası. İnternet bağlantınızı kontrol edin. (' + err.code + ')');
+          }
+        });
+    } else if (deneme < 10) {
+      // Firebase henüz yüklenmedi, 500ms bekle, tekrar dene
+      btn.textContent = 'Yükleniyor (' + deneme + ')...';
+      setTimeout(() => deneGiris(deneme + 1), 500);
+    } else {
+      btn.textContent = 'Giriş Yap';
+      btn.disabled = false;
+      gosterLoginHata('Firebase bağlantısı kurulamadı. İnternet bağlantınızı kontrol edin.');
+    }
   }
+
+  deneGiris(1);
 }
 
 function gosterLoginHata(mesaj) {
@@ -1874,7 +1900,7 @@ function gosterLoginHata(mesaj) {
 }
 
 function girisBasarili() {
-  document.getElementById('login-screen').style.display = 'none';
+  const ls = document.getElementById('login-screen'); ls.style.display = 'none'; ls.style.pointerEvents = 'none'; ls.style.zIndex = '-1';
   document.querySelector('.login-btn').textContent = 'Giriş Yap';
   document.querySelector('.login-btn').disabled = false;
   document.getElementById('girisli-kullanici-label').textContent = (girisliKullanici.email || girisliKullanici.ad) + ' olarak giriş yapıldı';
@@ -1888,7 +1914,11 @@ function girisBasarili() {
       if (localStr !== fbStr) {
         try {
           db = data;
+          if (!db.urunler)     db.urunler     = [];
+          if (!db.cariler)     db.cariler     = [];
+          if (!db.hareketler)  db.hareketler  = [];
           if (!db.veresiyeler) db.veresiyeler = [];
+          if (!db.ayarlar)     db.ayarlar     = { kritikEsik: 3, paraBirimi: '₺' };
           localStorage.setItem('mutfakpro', fbStr);
           refreshHome();
           if (document.getElementById('page-stok').classList.contains('active')) { renderKategoriChipler(); renderStok(); }
@@ -1910,7 +1940,7 @@ function cikisYap() {
   if (window.firebaseCikis) window.firebaseCikis();
   girisliKullanici = null;
   window._ilkYuklemeHazir = false;
-  document.getElementById('login-screen').style.display = 'flex';
+  const ls2 = document.getElementById('login-screen'); ls2.style.display = 'flex'; ls2.style.pointerEvents = ''; ls2.style.zIndex = '9999';
   document.getElementById('login-user').value = '';
   document.getElementById('login-pass').value = '';
 }

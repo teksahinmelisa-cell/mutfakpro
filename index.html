@@ -487,7 +487,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
           <button class="btn primary" onclick="qrSatisYap()"><i class="ti ti-check"></i> Satıldı</button>
           <button class="btn" onclick="qrFiyatGuncelle()"><i class="ti ti-edit"></i> Fiyat Güncelle</button>
           <button class="btn warning" onclick="qrStokGiris()"><i class="ti ti-arrow-down"></i> Stok Girişi</button>
-          <button class="btn" onclick="qrDetay()"><i class="ti ti-info-circle"></i> Detay</button>
+          <button class="btn" onclick="urunDuzenle()"><i class="ti ti-pencil"></i> Düzenle</button>
+          <button class="btn danger" onclick="urunSil()"><i class="ti ti-trash"></i> Sil</button>
         </div>
       </div>
 
@@ -1428,6 +1429,27 @@ function stokGirisKaydet() {
   alert('✓ Stok güncellendi! Yeni stok: ' + aktifQrUrun.stok);
   refreshHome();
 }
+function urunDuzenle() {
+  if (!aktifQrUrun) return;
+  const idx = db.urunler.indexOf(aktifQrUrun);
+  if (idx < 0) return;
+  goPage('stok'); setNav(1);
+  setTimeout(() => openUrunModal(idx), 200);
+}
+
+function urunSil() {
+  if (!aktifQrUrun) return;
+  const idx = db.urunler.indexOf(aktifQrUrun);
+  if (idx < 0) { alert('Ürün bulunamadı'); return; }
+  if (!confirm(aktifQrUrun.ad + ' ürününü silmek istediğinizden emin misiniz?')) return;
+  db.urunler.splice(idx, 1);
+  kaydet();
+  document.getElementById('qr-result').classList.remove('show');
+  aktifQrUrun = null;
+  refreshHome();
+  alert('✓ Ürün silindi.');
+}
+
 function qrDetay() {
   if (!aktifQrUrun) return;
   const idx = db.urunler.indexOf(aktifQrUrun);
